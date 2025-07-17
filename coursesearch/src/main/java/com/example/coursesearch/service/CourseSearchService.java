@@ -1,4 +1,5 @@
 package com.example.coursesearch.service;
+
 import co.elastic.clients.json.JsonData;
 import com.example.coursesearch.model.CourseDocument;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
@@ -27,16 +28,16 @@ public class CourseSearchService {
     private ElasticsearchOperations operations;
 
     public SearchHits<CourseDocument> search(String q,
-                                             Integer minAge,
-                                             Integer maxAge,
-                                             String category,
-                                             String type,
-                                             Double minPrice,
-                                             Double maxPrice,
-                                             Instant startDate,
-                                             String sort,
-                                             int page,
-                                             int size) {
+            Integer minAge,
+            Integer maxAge,
+            String category,
+            String type,
+            Double minPrice,
+            Double maxPrice,
+            Instant startDate,
+            String sort,
+            int page,
+            int size) {
 
         List<Query> filters = new ArrayList<>();
 
@@ -59,14 +60,19 @@ public class CourseSearchService {
             filters.add(RangeQuery.of(r -> r.field("price").lte(JsonData.of(maxPrice)))._toQuery());
         }
         if (startDate != null) {
-            filters.add(RangeQuery.of(r -> r.field("nextSessionDate").gte(JsonData.of(startDate.toString())))._toQuery());
+            filters.add(
+                    RangeQuery.of(r -> r.field("nextSessionDate").gte(JsonData.of(startDate.toString())))._toQuery());
         }
 
         Query mainQuery;
         if (q != null) {
             mainQuery = MultiMatchQuery.of(m -> m.fields("title", "description").query(q))._toQuery();
         } else {
-            mainQuery = null;
+            // If no search query, use a match_all query or similar to return all results
+            // (or handle as per business logic)
+            // For now, setting to null, but consider a match_all if no 'q' means all
+            // results.
+            mainQuery = null; // Or Query.of(q -> q.matchAll(m -> m)); for a match_all query
         }
 
         BoolQuery.Builder boolQuery = new BoolQuery.Builder();
@@ -76,11 +82,9 @@ public class CourseSearchService {
         boolQuery.filter(filters);
 
         SortOptions sortOptions = SortOptions.of(s -> s
-            .field(f -> f
-                .field("nextSessionDate")
-                .order(SortOrder.Asc)
-            )
-        );
+                .field(f -> f
+                        .field("nextSessionDate")
+                        .order(SortOrder.Asc)));
         if ("priceAsc".equals(sort)) {
             sortOptions = SortOptions.of(s -> s.field(f -> f.field("price").order(SortOrder.Asc)));
         } else if ("priceDesc".equals(sort)) {
@@ -88,10 +92,10 @@ public class CourseSearchService {
         }
 
         NativeQuery query = NativeQuery.builder()
-            .withQuery(qb -> qb.bool(boolQuery.build()))
-            .withSorts(sortOptions)
-            .withPageable(PageRequest.of(page, size))
-            .build();
+                .withQuery(qb -> qb.bool(boolQuery.build()))
+                .withSort(List.of(sortOptions)) // Changed from withSorts to withSort and wrapped in List.of()
+                .withPageable(PageRequest.of(page, size))
+                .build();
 
         return operations.search(query, CourseDocument.class);
     }
