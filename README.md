@@ -30,43 +30,52 @@ Docker and Docker Compose (for running Elasticsearch)
 Elasticsearch 8.13.4 (or compatible version, as configured in ElasticsearchConfig.java)
 
 Setup and Running
-
 1. Launch Elasticsearch
-   The application connects to an Elasticsearch instance. You can easily run Elasticsearch using Docker Compose.
+The application connects to an Elasticsearch instance. You can easily run Elasticsearch using Docker Compose.
 
 Create a docker-compose.yml file in your project's root directory (or a separate docker directory) with the following content:
 
 version: '3.8'
 
 services:
-elasticsearch:
-image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
-container_name: elasticsearch
-environment: - xpack.security.enabled=false # Disable security for simplicity in development - discovery.type=single-node - "ES_JAVA_OPTS=-Xms512m -Xmx512m" # Adjust memory as needed
-ports: - "9200:9200" # HTTP port - "9300:9300" # Transport port
-volumes: - esdata:/usr/share/elasticsearch/data # Persist data
-ulimits:
-memlock:
-soft: -1
-hard: -1
-healthcheck:
-test: ["CMD-SHELL", "curl -f http://localhost:9200/_cat/health?h=st || exit 1"]
-interval: 10s
-timeout: 10s
-retries: 5
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: elasticsearch
+    environment:
+      - xpack.security.enabled=false # Disable security for simplicity in development
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m" # Adjust memory as needed
+    ports:
+      - "9200:9200" # HTTP port
+      - "9300:9300" # Transport port
+    volumes:
+      - esdata:/usr/share/elasticsearch/data # Persist data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cat/health?h=st || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
 volumes:
-esdata:
-driver: local
+  esdata:
+    driver: local
+
+networks:
+  es-net:
+    driver: bridge
 
 Start Elasticsearch in detached mode:
 
 docker-compose up -d
 
-Wait a few moments for Elasticsearch to start up completely. You can check its health with curl http://localhost:9200/\_cat/health.
+Wait a few moments for Elasticsearch to start up completely. You can check its health with curl http://localhost:9200/_cat/health.
 
 2. Build and Run the Spring Boot Application
-   Navigate to the project root directory in your terminal:
+Navigate to the project root directory in your terminal:
 
 cd /path/to/your/coursesearch/project
 
@@ -81,23 +90,23 @@ mvnd spring-boot:run
 The application will start on http://localhost:8080 by default.
 
 3. Data Loading
-   Upon successful startup, the CourseLoader component (defined in src/main/java/com/example/coursesearch/listener/CourseLoader.java) will automatically read the sample-courses.json file (located in src/main/resources/) and index the course data into your running Elasticsearch instance. You should see a message like "Courses indexed into Elasticsearch." in your application logs.
+Upon successful startup, the CourseLoader component (defined in src/main/java/com/example/coursesearch/listener/CourseLoader.java) will automatically read the sample-courses.json file (located in src/main/resources/) and index the course data into your running Elasticsearch instance. You should see a message like "Courses indexed into Elasticsearch." in your application logs.
 
 Ensure your sample-courses.json file has content similar to this example:
 
 [
-{
-"id": "course-1",
-"title": "Math Magic",
-"description": "This is a detailed course about math magic for students interested in hands-on learning.",
-"category": "Literature",
-"type": "COURSE",
-"gradeRange": "10th–12th",
-"minAge": 14,
-"maxAge": 16,
-"price": 256.63,
-"nextSessionDate": "2025-06-21T00:00:00Z"
-}
+  {
+    "id": "course-1",
+    "title": "Math Magic",
+    "description": "This is a detailed course about math magic for students interested in hands-on learning.",
+    "category": "Literature",
+    "type": "COURSE",
+    "gradeRange": "10th–12th",
+    "minAge": 14,
+    "maxAge": 16,
+    "price": 256.63,
+    "nextSessionDate": "2025-06-21T00:00:00Z"
+  }
 ]
 
 Note: The nextSessionDate field must be in ISO 8601 format (e.g., "YYYY-MM-DDTHH:mm:ssZ").
